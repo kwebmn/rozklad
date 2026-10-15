@@ -1,0 +1,260 @@
+<!DOCTYPE html><html><head><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="keywords" content="" /><meta name="author" content="ПП Політек-Софт" /><meta name="description" content="ПС-Розклад v.5.2" /><meta http-equiv="Content-Type" content="text/html; charset=windows-1251" /><title>ПС-Розклад v.5.2</title><link rel="stylesheet" href="./../assets/vendor/inter/inter.min.css" /><link rel="stylesheet" href="./../assets/vendor/bootstrap5-conca/css/bootstrap.min.css" /><link rel="stylesheet" href="./../assets/vendor/bootstrap5-conca/css/conca.min.css" /><link rel="stylesheet" href="./../assets/vendor/font-awesome7/css/all.min.css" /><link rel="stylesheet" href="./../assets/css/common_5.min.css?v=20260813-4" /><link rel="stylesheet" href="./../assets/css/timetable_add.css" /><script type="text/javascript" src="./../assets/vendor/bootstrap5/js/bootstrap.bundle.min.js"></script></head><body class="d-flex flex-column min-vh-100"><!-- PathDBTimeTable --><div id="wrap" class="flex-grow-1 py-4"><div class="container-fluid"><div class="container"><div class="card pf16 shadow-xl"><div class="card-body"><style>
+.remote_work{font-weight: bold;}
+</style>
+<div class="d-print-none">
+	<h3 class="text-center">Розклад занять</h3>
+	<h4 class="text-center">Заклад вищої освіти `Університет Короля Данила`</h4>
+
+	
+	
+	<div class="text-center fs-4 m-3"><a href="https://forms.gle/BM1UM6KkKfrSrbb66"><i><u> <b>оперативні звернення УКД</i></u> </b></a></div>
+	
+	
+
+	<div class="pb-2 mb-3 border-bottom">
+		<form enctype="application/x-www-form-urlencoded" name="setVedP" id="setVedP" method="post" action="./timetable.cgi?n=700">
+
+			<div class="mb-3">
+				<select name="faculty" id="faculty" class="form-select"><option value="0">Оберіть факультет</option><option value="1001">Факультет суспільних і прикладних наук</option><option value="1002">Фаховий коледж Закладу вищої освіти `Університет Короля Данила`</option><option value="1003">.</option><option value="1004">Факультет медицини</option></select>
+			</div>
+
+			<div class="row">
+				<div class="col-12 col-sm-4">
+					<input type="text" name="teacher" id="teacher" value="" class="form-control" placeholder="ПІБ викладача" autocomplete="off" />
+				</div>
+
+				<div class="col-12 col-sm-4">
+					<div class="mb-3">
+						<select name="course" id="course" class="form-select"><option value="0">Оберіть курс</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select>
+					</div>
+				</div>
+
+				<div class="col-12 col-sm-4">
+					<div class="mb-3">
+						<input type="text" name="group" id="group" value="ІПЗс-24-1" placeholder="Назва групи" class="form-control" autocomplete="off" />
+					</div>
+				</div>
+			</div>
+
+			<div class="row mt-3">
+				<div class="col-12 col-md-3">
+					<div class="mb-3">
+						<div class="input-group">
+							<span class="input-group-text">з дати:</span>
+							<input type="text" name="sdate" id="sdate" value="13.10.2026" class="form-control form-control-sm" placeholder="дд.мм.рррр" maxlength="10" />
+						</div>
+					</div>
+				</div>
+
+				<div class="col-12 col-md-3">
+					<div class="mb-3">
+						<div class="input-group">
+							<span class="input-group-text">до дати:</span>
+							<input type="text" name="edate" id="edate" value="19.10.2026" class="form-control form-control-sm" placeholder="дд.мм.рррр" maxlength="10" />
+						</div>
+					</div>
+				</div>
+
+				<div class="col-12 col-md-6 text-end">
+					<button type="submit" class="btn btn-success">Показати розклад занять</button>
+				</div>
+			</div>
+
+			<input type="hidden" name="n" value="700" />
+		</form>
+	</div>
+</div>
+
+<link rel="stylesheet" href="./../assets/vendor/datepicker/css/datepicker-bs5.min.css" />
+<script src="./../assets/vendor/imask/imask.min.js"></script>
+<script src="./../assets/vendor/datepicker/js/datepicker-full.min.js"></script>
+<script src="./../assets/vendor/datepicker/js/locale-uk.js"></script>
+<script src="./../assets/js/autocomplete.min.js"></script>
+<script>
+(function () {
+	function formatDate(date) {
+		var day = date.getDate();
+		var month = date.getMonth() + 1;
+		var year = date.getFullYear();
+		if (day < 10) day = '0' + day;
+		if (month < 10) month = '0' + month;
+		return [day, month, year].join('.');
+	}
+
+	function parseDate(str) {
+		var parts = str.split('.');
+		return new Date(parts[2], parts[1] - 1, parts[0]);
+	}
+
+	var dateMaskOptions = {
+		mask: Date,
+		pattern: 'd.m.Y',
+		blocks: {
+			d: { mask: IMask.MaskedRange, from: 1, to: 31, maxLength: 2 },
+			m: { mask: IMask.MaskedRange, from: 1, to: 12, maxLength: 2 },
+			Y: { mask: IMask.MaskedRange, from: 1900, to: 2999 }
+		},
+		format: formatDate,
+		parse: parseDate
+	};
+
+	var sdateEl = document.getElementById('sdate');
+	var edateEl = document.getElementById('edate');
+
+	var sdateMask = IMask(sdateEl, dateMaskOptions);
+	var edateMask = IMask(edateEl, dateMaskOptions);
+
+	var datepickerOptions = {
+		language: 'uk',
+		format: 'dd.mm.yyyy',
+		autohide: true,
+		todayHighlight: true,
+		weekStart: 1
+	};
+
+	var sdatePicker = new Datepicker(sdateEl, datepickerOptions);
+	var edatePicker = new Datepicker(edateEl, datepickerOptions);
+
+	sdateEl.addEventListener('changeDate', function () { sdateMask.updateValue(); });
+	edateEl.addEventListener('changeDate', function () { edateMask.updateValue(); });
+
+	var facultyEl = document.getElementById('faculty');
+	var courseEl = document.getElementById('course');
+
+	new SimpleAutocomplete(document.getElementById('teacher'), {
+		minChars: 3,
+		deferMs: 50,
+		serviceUrl: './timetable.cgi?n=701&lev=141',
+		params: function () {
+			return { faculty: facultyEl ? facultyEl.value : '' };
+		}
+	});
+
+	new SimpleAutocomplete(document.getElementById('group'), {
+		minChars: 2,
+		deferMs: 50,
+		serviceUrl: './timetable.cgi?n=701&lev=142',
+		params: function () {
+			return {
+				faculty: facultyEl ? facultyEl.value : '',
+				course: courseEl ? courseEl.value : ''
+			};
+		}
+	});
+})();
+</script>
+
+
+
+<div class="container">
+	<h4 class="d-none d-sm-block">Розклад групи <a title="Постійне посилання на тижневий розклад" href="./timetable.cgi?n=700&group=-607&sdate=13.10.2026&edate=19.10.2026">ІПЗс-24-1</a> з 13.10.2026 по 19.10.2026</h4>
+	<h4 class="d-block d-sm-none text-center">Розклад групи<br> <a class="rozklad-title-sm" title="Постійне посилання на тижневий розклад" href="./timetable.cgi?n=700&group=-607&sdate=13.10.2026&edate=19.10.2026">ІПЗс-24-1</a><br> з 13.10.2026 по 19.10.2026</h4>
+
+	
+	<div class="text-center"><a href="https://ukd.edu.ua/kataloh-vybirkovykh-dystsyplin"><i><u> <b>каталог вибіркових дисциплін</i></u> </b></a></div>
+	
+	
+
+	<div class="row">
+	
+		<div class="col-12 col-sm-6">
+			<h4>13.10.2026 <small>Вівторок</small></h4>
+			<div class="table-responsive">
+				<table class="table table-bordered table-striped table-sm">
+					<tbody>
+					
+						<tr><td>1</td><td>08:30<br>09:50</td><td class="rozklad-cell-text"><span class="p_name">Prompt-інжиніринг</span> (<span class="p_type_name">Л</span>)<br> <span class="gr2_name">потік ІПЗс-24-1, ІПЗс-24-2</span><br> <span class="t_name">Демчина Микола Миколайович</span> <span class="room_name">к.1ауд.410 </span><br> </td></tr>
+					
+						<tr><td>2</td><td>10:00<br>11:20</td><td class="rozklad-cell-text"><span class="p_name">Розробка веб-додатків, веб-дизайн та тестування</span> (<span class="p_type_name">Л</span>)<br> <span class="gr2_name">потік ІПЗс-24-1, ІПЗс-24-2</span><br> <span class="t_name">Луцак Дмитро Любомирович</span> <span class="room_name">к.1ауд.413 </span><br> </td></tr>
+					
+						<tr><td>3</td><td>12:00<br>13:20</td><td class="rozklad-cell-text"><span class="p_name">Prompt-інжиніринг</span> (<span class="p_type_name">Пр</span>)<br>  <span class="t_name">Демчина Микола Миколайович</span> <span class="room_name">к.1ауд.330/5к </span><br> </td></tr>
+					
+						<tr><td>4</td><td>13:30<br>14:50</td><td class="rozklad-cell-text"> </td></tr>
+					
+					</tbody>
+				</table>
+			</div>
+		</div>
+	
+		<div class="col-12 col-sm-6">
+			<h4>14.10.2026 <small>Середа</small></h4>
+			<div class="table-responsive">
+				<table class="table table-bordered table-striped table-sm">
+					<tbody>
+					
+						<tr><td>1</td><td>08:30<br>09:50</td><td class="rozklad-cell-text"> </td></tr>
+					
+						<tr><td>2</td><td>10:00<br>11:20</td><td class="rozklad-cell-text"><span class="p_name">Менеджмент проєктів програмного забезпечення</span> (<span class="p_type_name">Пр</span>)<br>  <span class="t_name">Гаврилко Сергій Михайлович</span> <span class="room_name">к.1ауд.330/5к </span><br> </td></tr>
+					
+						<tr><td>3</td><td>12:00<br>13:20</td><td class="rozklad-cell-text"><span class="p_name">Безпека програм та даних</span> (<span class="p_type_name">Пр</span>)<br>  <span class="t_name">Василенко Владислав Васильович</span> <span class="room_name">к.1ауд.327/1к </span><br> </td></tr>
+					
+						<tr><td>4</td><td>13:30<br>14:50</td><td class="rozklad-cell-text"><span class="p_name">Алгоритми та методи обчислень</span> (<span class="p_type_name">Пр</span>)<br>  <span class="t_name">Дзюба Марина Володимирівна</span> <span class="room_name">к.1ауд.503 </span><br> </td></tr>
+					
+					</tbody>
+				</table>
+			</div>
+		</div>
+	
+		<div class="col-12 col-sm-6">
+			<h4>15.10.2026 <small>Четвер</small></h4>
+			<div class="table-responsive">
+				<table class="table table-bordered table-striped table-sm">
+					<tbody>
+					
+						<tr><td>1</td><td>08:30<br>09:50</td><td class="rozklad-cell-text"><span class="p_name">Розробка веб-додатків, веб-дизайн та тестування</span> (<span class="p_type_name">Пр</span>)<br>  <span class="t_name">Іванов Олександр Олександрович</span> <span class="room_name">к.1ауд.330/5к </span><br> </td></tr>
+					
+						<tr><td>2</td><td>10:00<br>11:20</td><td class="rozklad-cell-text"><span class="p_name">UI/UX дизайн</span> (<span class="p_type_name">Пр</span>)<br>  <span class="t_name">Стисло Оксана Василівна</span> <span class="room_name">к.1ауд.330/1к </span><br> </td></tr>
+					
+						<tr><td>3</td><td>12:00<br>13:20</td><td class="rozklad-cell-text"><span class="p_name">UI/UX дизайн</span> (<span class="p_type_name">Пр</span>)<br>  <span class="t_name">Стисло Оксана Василівна</span> <span class="room_name">к.1ауд.330/1к </span><br> </td></tr>
+					
+						<tr><td>4</td><td>13:30<br>14:50</td><td class="rozklad-cell-text"> </td></tr>
+					
+					</tbody>
+				</table>
+			</div>
+		</div>
+	
+		<div class="col-12 col-sm-6">
+			<h4>16.10.2026 <small>П'ятниця</small></h4>
+			<div class="table-responsive">
+				<table class="table table-bordered table-striped table-sm">
+					<tbody>
+					
+						<tr><td>1</td><td>08:30<br>09:50</td><td class="rozklad-cell-text"><span class="p_name">ПД. Іноземна мова (за професійним спрямуванням)</span> (<span class="p_type_name">Пр</span>)<br>  <span class="t_name">Куцела Марія Михайлівна</span> <span class="room_name">к.1ауд.501 </span><br> </td></tr>
+					
+						<tr><td>2</td><td>10:00<br>11:20</td><td class="rozklad-cell-text"><span class="p_name">Паралельні та розподілені обчислення</span> (<span class="p_type_name">Пр</span>)<br>  <span class="t_name">Демчина Микола Миколайович</span> <span class="room_name">к.1ауд.330/1к </span><br> </td></tr>
+					
+						<tr><td>3</td><td>12:00<br>13:20</td><td class="rozklad-cell-text"> </td></tr>
+					
+						<tr><td>4</td><td>13:30<br>14:50</td><td class="rozklad-cell-text"> </td></tr>
+					
+					</tbody>
+				</table>
+			</div>
+		</div>
+	
+		<div class="col-12 col-sm-6">
+			<h4>19.10.2026 <small>Понеділок</small></h4>
+			<div class="table-responsive">
+				<table class="table table-bordered table-striped table-sm">
+					<tbody>
+					
+						<tr><td>1</td><td>08:30<br>09:50</td><td class="rozklad-cell-text"><span class="p_name">Prompt-інжиніринг</span> (<span class="p_type_name">Пр</span>)<br>  <span class="t_name">Демчина Микола Миколайович</span> <span class="room_name">к.1ауд.330/5к </span><br> </td></tr>
+					
+						<tr><td>2</td><td>10:00<br>11:20</td><td class="rozklad-cell-text"><span class="p_name">ПД. Іноземна мова (за професійним спрямуванням)</span> (<span class="p_type_name">Пр</span>)<br>  <span class="t_name">Куцела Марія Михайлівна</span> <span class="room_name">к.1ауд.705 </span><br> </td></tr>
+					
+						<tr><td>3</td><td>12:00<br>13:20</td><td class="rozklad-cell-text"><span class="p_name">Паралельні та розподілені обчислення</span> (<span class="p_type_name">Л</span>)<br> <span class="gr2_name">потік ІПЗс-24-1, ІПЗс-24-2</span><br> <span class="t_name">Демчина Микола Миколайович</span> <span class="room_name">к.1ауд.412 </span><br> </td></tr>
+					
+						<tr><td>4</td><td>13:30<br>14:50</td><td class="rozklad-cell-text"> </td></tr>
+					
+					</tbody>
+				</table>
+			</div>
+		</div>
+	
+	</div>
+</div>
+
+
+
+</div></div></div></div></div><div id="footer" class="border-top py-2"><div class="container"><p class="text-muted credit mb-0 small">© ПП <a href="http://politek-soft.kiev.ua" target="_blank">Політек-софт</a></p></div></div></body></html>
