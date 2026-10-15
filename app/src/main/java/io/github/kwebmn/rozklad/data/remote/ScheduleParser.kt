@@ -4,6 +4,7 @@ import io.github.kwebmn.rozklad.domain.Lesson
 import io.github.kwebmn.rozklad.domain.SubscriptionType
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -26,7 +27,13 @@ object ScheduleParser {
     private const val GROUP_TITLE = "Розклад групи"
     private const val TEACHER_TITLE = "Розклад викладача"
 
-    fun parse(html: String): ParsedSchedule {
+    fun parse(html: String): ParsedSchedule = try {
+        parseDocument(html)
+    } catch (e: DateTimeException) {
+        throw SiteFormatException("Bad date/time: ${e.message}")
+    }
+
+    private fun parseDocument(html: String): ParsedSchedule {
         val doc = Jsoup.parse(html)
         if (doc.select("div.alert").any { it.text().contains(NOTHING_FOUND) }) {
             return ParsedSchedule(null, null, null, emptyList())

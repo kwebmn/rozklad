@@ -117,4 +117,18 @@ class ScheduleParserTest {
             ScheduleParser.parse("<html><body>Internal Server Error</body></html>")
         }
     }
+
+    @Test
+    fun `malformed time is a format error`() {
+        val html = """
+            <html><body>
+            <h4>Розклад групи <a href="/time-table/group?n=700&group=-1&type=0">X</a></h4>
+            <div>
+              <h4>13.10.2026 <small>Вівторок</small></h4>
+              <table><tr><td>1</td><td>08:30<br>25:61</td><td><span class="p_name">Предмет</span></td></tr></table>
+            </div>
+            </body></html>
+        """.trimIndent()
+        assertThrows(SiteFormatException::class.java) { ScheduleParser.parse(html) }
+    }
 }
