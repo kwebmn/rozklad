@@ -1,6 +1,13 @@
 package io.github.kwebmn.rozklad
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
+import io.github.kwebmn.rozklad.work.ScheduleEffects
+import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -32,11 +39,22 @@ import io.github.kwebmn.rozklad.update.ApkInstaller
 private enum class Screen { SCHEDULE, ADD, SETTINGS }
 
 class MainActivity : ComponentActivity() {
-    /** Пересчитать напоминания/виджет после изменений расписания или настроек (наполняется в Task 15). */
-    private fun onScheduleChanged() = Unit
+    /** Пересчитать напоминания/виджет после изменений расписания или настроек. */
+    private fun onScheduleChanged() {
+        container.appScope.launch { ScheduleEffects.apply(applicationContext) }
+    }
+
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { onScheduleChanged() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        lifecycleScope.launch { ScheduleEffects.apply(applicationContext) }
         val c = container
         val installer = ApkInstaller(applicationContext)
         setContent {
