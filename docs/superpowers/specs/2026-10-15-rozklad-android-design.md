@@ -27,7 +27,7 @@
 | Автокомплит групп | `GET timetable.cgi?n=701&lev=142&faculty=<id>&course=<n>&query=<cp1251-urlencoded>` → JSON `{"query":..,"suggestions":[..]}` |
 | Автокомплит преподавателей | `GET timetable.cgi?n=701&lev=141&faculty=<id>&query=<cp1251>` → тот же формат |
 | Расписание по имени | `POST timetable.cgi?n=700`, form: `faculty=0&teacher=<cp1251>&course=0&group=<cp1251>&sdate=dd.mm.yyyy&edate=dd.mm.yyyy&n=700` |
-| Расписание по ID | `GET timetable.cgi?n=700&group=<id>&sdate=..&edate=..` (для преподавателя — `teacher=<id>`, проверить при реализации) |
+| Расписание по ID | `GET timetable.cgi?n=700&group=<id>&sdate=..&edate=..` (для преподавателя — `teacher=<id>`, проверено: `teacher=66`) |
 
 Факультеты (`faculty`): 0 — все, 1001 Факультет суспільних і прикладних наук, 1002 Фаховий коледж,
 1004 Факультет медицини (1003 — «.», скрывать). Курс: 0–6.
