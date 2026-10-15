@@ -5,6 +5,7 @@ import io.github.kwebmn.rozklad.data.remote.NetworkException
 import io.github.kwebmn.rozklad.data.remote.SiteFormatException
 import io.github.kwebmn.rozklad.ui.PARSE_ERROR
 import io.github.kwebmn.rozklad.domain.DateRange
+import io.github.kwebmn.rozklad.domain.LessonChange
 import io.github.kwebmn.rozklad.domain.Subscription
 import io.github.kwebmn.rozklad.domain.SubscriptionType
 import io.github.kwebmn.rozklad.fakes.FIXED_CLOCK
@@ -12,6 +13,7 @@ import io.github.kwebmn.rozklad.fakes.FRI
 import io.github.kwebmn.rozklad.fakes.FakeLessonStore
 import io.github.kwebmn.rozklad.fakes.FakeScheduleSource
 import io.github.kwebmn.rozklad.fakes.MainDispatcherRule
+import io.github.kwebmn.rozklad.fakes.MutableClock
 import io.github.kwebmn.rozklad.fakes.THU
 import io.github.kwebmn.rozklad.fakes.clockAt
 import io.github.kwebmn.rozklad.fakes.lesson
@@ -50,7 +52,7 @@ class ScheduleViewModelTest {
         store.replaceLessons(teacherId, window, listOf(lesson(THU, 3, "Лекція")))
     }
 
-    private fun vm(clock: Clock = FIXED_CLOCK, onSynced: () -> Unit = {}) =
+    private fun vm(clock: Clock = FIXED_CLOCK, onSynced: (Subscription, List<LessonChange>) -> Unit = { _, _ -> }) =
         ScheduleViewModel(ScheduleRepository(source, store, clock), clock, onSynced)
 
     @Test
@@ -98,7 +100,7 @@ class ScheduleViewModelTest {
     @Test
     fun `successful refresh notifies`() {
         var synced = 0
-        val vm = vm(onSynced = { synced++ })
+        val vm = vm(onSynced = { _, _ -> synced++ })
         vm.refresh()
         assertEquals(1, synced)
         assertEquals(false, vm.state.value.refreshing)
@@ -146,5 +148,69 @@ class ScheduleViewModelTest {
         source.error = null
         vm.selectSubscription(teacherId)
         assertEquals(false, vm.state.value.offline)
+    }
+
+    @Test
+    fun `refresh passes found changes to the callback`() {
+        var received: Pair<Subscription, List<LessonChange>>? = null
+        val vm = vm(onSynced = { sub, changes -> received = sub to changes })
+        val moved = lesson(FRI, 1, room = "к.1ауд.503")
+        source.schedule = source.schedule.copy(lessons = listOf(lesson(THU, 1), lesson(THU, 2), moved))
+        vm.refresh()
+        assertEquals(groupId, received?.first?.id)
+        assertEquals(listOf(LessonChange.Changed(lesson(FRI, 1), moved)), received?.second)
+    }
+
+    @Test
+    fun `reopening on the next day selects the new start day`() {
+        val clock = MutableClock("2026-10-15T09:00")
+        val vm = vm(clock)
+        assertEquals(THU, vm.state.value.selectedDate)
+        clock.set("2026-10-16T07:00")
+        vm.onStart()
+        assertEquals(FRI, vm.state.value.selectedDate)
+    }
+
+    @Test
+    fun `reopening with a stale subscription refreshes`() {
+        val clock = MutableClock("2026-10-15T09:00")
+        val vm = vm(clock)
+        assertTrue(source.fetchCalls.isEmpty())
+        clock.set("2026-10-15T10:00")
+        vm.onStart()
+        assertEquals(1, source.fetchCalls.size)
+    }
+
+    @Test
+    fun `reopening on the same day keeps a manually picked date`() {
+        val clock = MutableClock("2026-10-15T09:00")
+        val vm = vm(clock)
+        vm.shiftDay(-1)
+        clock.set("2026-10-15T09:10")
+        vm.onStart()
+        assertEquals(LocalDate.of(2026, 10, 14), vm.state.value.selectedDate)
+        assertTrue(source.fetchCalls.isEmpty())
+    }
+
+    @Test
+    fun `reopening on another day overrides a manually picked date`() {
+        val clock = MutableClock("2026-10-15T09:00")
+        val vm = vm(clock)
+        vm.shiftDay(-1)
+        clock.set("2026-10-16T07:00")
+        vm.onStart()
+        assertEquals(FRI, vm.state.value.selectedDate)
+    }
+
+    @Test
+    fun `reopening on the same day without a manual pick re-chooses the start day`() {
+        val clock = MutableClock("2026-10-15T09:00")
+        val vm = vm(clock)
+        clock.set("2026-10-15T09:20")
+        vm.onStart()
+        assertEquals(THU, vm.state.value.selectedDate)
+        clock.set("2026-10-15T12:00")
+        vm.onStart()
+        assertEquals(FRI, vm.state.value.selectedDate)
     }
 }

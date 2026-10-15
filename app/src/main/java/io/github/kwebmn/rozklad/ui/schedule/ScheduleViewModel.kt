@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.kwebmn.rozklad.data.ScheduleRepository
 import io.github.kwebmn.rozklad.domain.DateRange
 import io.github.kwebmn.rozklad.domain.Lesson
+import io.github.kwebmn.rozklad.domain.LessonChange
 import io.github.kwebmn.rozklad.domain.Subscription
 import io.github.kwebmn.rozklad.domain.chooseStartDay
 import io.github.kwebmn.rozklad.domain.syncWindow
@@ -45,7 +46,7 @@ data class ScheduleUiState(
 class ScheduleViewModel(
     private val repo: ScheduleRepository,
     private val clock: Clock,
-    private val onSynced: () -> Unit = {},
+    private val onSynced: (Subscription, List<LessonChange>) -> Unit = { _, _ -> },
 ) : ViewModel() {
     private data class Status(val refreshing: Boolean = false, val offline: Boolean = false, val error: String? = null)
 
@@ -55,6 +56,11 @@ class ScheduleViewModel(
     private val week = MutableStateFlow(weekStart(today))
     private val status = MutableStateFlow(Status())
     private val loadedWeeks = mutableSetOf<Pair<Long, LocalDate>>()
+
+    /** Календарная дата последнего автоматического выбора дня (null — init ещё не выбрал). */
+    private var autoChosenOn: LocalDate? = null
+    /** Пользователь сам выбрал дату после последнего автоматического выбора. */
+    private var manualPick = false
 
     private val current: StateFlow<Subscription?> =
         combine(repo.subscriptions, selectedSubId) { subs, id ->
@@ -81,14 +87,43 @@ class ScheduleViewModel(
     init {
         viewModelScope.launch {
             val sub = current.filterNotNull().first()
-            val now = LocalDateTime.now(clock)
-            showDate(chooseStartDay(now, repo.lessonsOnce(sub.id, syncWindow(now.toLocalDate()))))
-            val last = sub.lastSyncedAt
-            if (last == null || clock.millis() - last > STALE_MS) refresh()
+            autoSelectStartDay(sub)
+            if (isStale(sub)) refresh()
         }
     }
 
+    /**
+     * Экран снова виден (ON_START). Процесс мог пережить ночь: если пользователь не выбирал дату сам
+     * или наступил другой день — заново выбираем стартовый день; устаревшие данные обновляем.
+     */
+    fun onStart() {
+        val sub = current.value ?: return
+        val chosenOn = autoChosenOn ?: return // init ещё работает и сам всё сделает
+        viewModelScope.launch {
+            if (!manualPick || today != chosenOn) autoSelectStartDay(sub)
+            if (isStale(current.value ?: sub)) refresh()
+        }
+    }
+
+    private suspend fun autoSelectStartDay(sub: Subscription) {
+        val now = LocalDateTime.now(clock)
+        val date = chooseStartDay(now, repo.lessonsOnce(sub.id, syncWindow(now.toLocalDate())))
+        select(date)
+        autoChosenOn = now.toLocalDate()
+        manualPick = false
+    }
+
+    private fun isStale(sub: Subscription): Boolean {
+        val last = sub.lastSyncedAt
+        return last == null || clock.millis() - last > STALE_MS
+    }
+
     fun showDate(date: LocalDate) {
+        manualPick = true
+        select(date)
+    }
+
+    private fun select(date: LocalDate) {
         selectedDate.value = date
         week.value = weekStart(date)
         loadIfOutsideWindow(date)
@@ -103,18 +138,17 @@ class ScheduleViewModel(
         status.value = Status(refreshing = status.value.refreshing)
         viewModelScope.launch {
             val sub = current.first { it?.id == id } ?: return@launch
-            val last = sub.lastSyncedAt
-            if (last == null || clock.millis() - last > STALE_MS) refresh() else loadIfOutsideWindow(selectedDate.value)
+            if (isStale(sub)) refresh() else loadIfOutsideWindow(selectedDate.value)
         }
     }
 
     fun refresh() {
         val sub = current.value ?: return
         sync {
-            repo.refresh(sub)
+            val changes = repo.refresh(sub)
             val w = week.value
             if (w !in syncWindow(today)) repo.refresh(sub, DateRange(w, w.plusDays(6)))
-            onSynced()
+            onSynced(repo.subscriptionsOnce().firstOrNull { it.id == sub.id } ?: sub, changes)
         }
     }
 

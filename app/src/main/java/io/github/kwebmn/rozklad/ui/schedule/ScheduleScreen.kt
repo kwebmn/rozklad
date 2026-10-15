@@ -27,6 +27,8 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.kwebmn.rozklad.domain.*
 import kotlinx.coroutines.delay
@@ -38,6 +40,7 @@ import java.time.LocalDateTime
 @Composable
 fun ScheduleScreen(vm: ScheduleViewModel, clock: Clock, onAdd: () -> Unit, onSettings: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { vm.onStart() }
     val now by produceState(LocalDateTime.now(clock)) {
         while (true) {
             delay(30_000)

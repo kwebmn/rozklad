@@ -6,7 +6,9 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
+import io.github.kwebmn.rozklad.work.Notifier
 import io.github.kwebmn.rozklad.work.ScheduleEffects
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -24,6 +26,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.kwebmn.rozklad.data.AppSettings
+import io.github.kwebmn.rozklad.domain.LessonChange
 import io.github.kwebmn.rozklad.domain.Subscription
 import io.github.kwebmn.rozklad.ui.add.AddScreen
 import io.github.kwebmn.rozklad.ui.add.AddViewModel
@@ -44,6 +47,19 @@ class MainActivity : ComponentActivity() {
         container.appScope.launch { ScheduleEffects.apply(applicationContext) }
     }
 
+    /** Изменения, найденные обновлением в приложении, уведомляются так же, как фоновой синхронизацией. */
+    private fun onSynced(sub: Subscription, changes: List<LessonChange>) {
+        val c = container
+        c.appScope.launch {
+            if (changes.isNotEmpty() && c.repository.primary()?.id == sub.id &&
+                c.settings.settings.first().changeNotifications
+            ) {
+                Notifier.showChanges(applicationContext, sub, changes)
+            }
+            ScheduleEffects.apply(applicationContext)
+        }
+    }
+
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { onScheduleChanged() }
 
@@ -61,7 +77,7 @@ class MainActivity : ComponentActivity() {
             val settings by c.settings.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
             val subscriptions by c.repository.subscriptions.collectAsStateWithLifecycle(initialValue = null)
             val scheduleVm: ScheduleViewModel = viewModel(factory = viewModelFactory {
-                initializer { ScheduleViewModel(c.repository, c.clock, onSynced = ::onScheduleChanged) }
+                initializer { ScheduleViewModel(c.repository, c.clock, onSynced = ::onSynced) }
             })
             val addVm: AddViewModel = viewModel(factory = viewModelFactory {
                 initializer { AddViewModel(c.repository) }
