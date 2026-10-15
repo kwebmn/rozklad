@@ -9,6 +9,7 @@ import io.github.kwebmn.rozklad.fakes.FakeSettingsStore
 import io.github.kwebmn.rozklad.fakes.MainDispatcherRule
 import io.github.kwebmn.rozklad.update.ApkDownloader
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -68,5 +69,41 @@ class UpdateViewModelTest {
         assertEquals(UpdateState.Idle, vm.state.value)
         vm.check(force = true)
         assertTrue(vm.state.value is UpdateState.Failed)
+    }
+
+    @Test
+    fun `throwing downloader is reported as failure`() {
+        val vm = UpdateViewModel(
+            UpdateChecker(ReleaseSource { release }, FakeSettingsStore(), "0.1.0", FIXED_CLOCK),
+            object : ApkDownloader {
+                override suspend fun download(release: ReleaseInfo): Boolean = throw IllegalStateException("boom")
+            },
+        )
+        vm.check(force = true)
+        vm.download()
+        assertTrue(vm.state.value is UpdateState.Failed)
+    }
+
+    @Test
+    fun `cancelDownload stops an in-progress download`() {
+        val vm = UpdateViewModel(
+            UpdateChecker(ReleaseSource { release }, FakeSettingsStore(), "0.1.0", FIXED_CLOCK),
+            object : ApkDownloader {
+                override suspend fun download(release: ReleaseInfo): Boolean = awaitCancellation()
+            },
+        )
+        vm.check(force = true)
+        vm.download()
+        assertEquals(UpdateState.Downloading, vm.state.value)
+        vm.cancelDownload()
+        assertEquals(UpdateState.Idle, vm.state.value)
+    }
+
+    @Test
+    fun `automatic check stays silent on non-network errors`() {
+        error = IllegalStateException("datastore")
+        val vm = vm()
+        vm.check(force = false)
+        assertEquals(UpdateState.Idle, vm.state.value)
     }
 }

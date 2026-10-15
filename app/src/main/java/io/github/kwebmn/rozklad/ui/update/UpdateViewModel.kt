@@ -6,6 +6,8 @@ import io.github.kwebmn.rozklad.data.UpdateChecker
 import io.github.kwebmn.rozklad.data.remote.NetworkException
 import io.github.kwebmn.rozklad.data.remote.ReleaseInfo
 import io.github.kwebmn.rozklad.update.ApkDownloader
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,22 +40,40 @@ class UpdateViewModel(
                     force -> UpdateState.UpToDate
                     else -> UpdateState.Idle
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: NetworkException) {
+                if (force) UpdateState.Failed("Не вдалося перевірити оновлення") else UpdateState.Idle
+            } catch (e: Exception) {
                 if (force) UpdateState.Failed("Не вдалося перевірити оновлення") else UpdateState.Idle
             }
         }
     }
 
+    private var downloadJob: Job? = null
+
     fun download() {
         val release = (_state.value as? UpdateState.Available)?.release ?: return
         _state.value = UpdateState.Downloading
-        viewModelScope.launch {
-            _state.value = if (downloader.download(release)) {
-                UpdateState.Ready
-            } else {
+        downloadJob = viewModelScope.launch {
+            _state.value = try {
+                if (downloader.download(release)) {
+                    UpdateState.Ready
+                } else {
+                    UpdateState.Failed("Не вдалося завантажити оновлення")
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 UpdateState.Failed("Не вдалося завантажити оновлення")
             }
         }
+    }
+
+    fun cancelDownload() {
+        downloadJob?.cancel()
+        downloadJob = null
+        _state.value = UpdateState.Idle
     }
 
     fun dismiss() {

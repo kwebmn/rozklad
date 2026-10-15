@@ -11,7 +11,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @Composable
-fun UpdateDialog(state: UpdateState, onUpdate: () -> Unit, onInstall: () -> Unit, onDismiss: () -> Unit) {
+fun UpdateDialog(
+    state: UpdateState,
+    onUpdate: () -> Unit,
+    onInstall: () -> Unit,
+    onDismiss: () -> Unit,
+    onCancelDownload: () -> Unit,
+) {
     when (state) {
         UpdateState.Idle, UpdateState.Checking -> Unit
         UpdateState.UpToDate -> AlertDialog(
@@ -36,6 +42,7 @@ fun UpdateDialog(state: UpdateState, onUpdate: () -> Unit, onInstall: () -> Unit
             title = { Text("Завантаження оновлення…") },
             text = { LinearProgressIndicator(Modifier.fillMaxWidth()) },
             confirmButton = {},
+            dismissButton = { TextButton(onClick = onCancelDownload) { Text("Скасувати") } },
         )
         UpdateState.Ready -> AlertDialog(
             onDismissRequest = onDismiss,

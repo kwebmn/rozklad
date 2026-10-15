@@ -8,7 +8,9 @@ import android.os.Environment
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import io.github.kwebmn.rozklad.data.remote.ReleaseInfo
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.io.File
 
 interface ApkDownloader {
@@ -16,8 +18,8 @@ interface ApkDownloader {
 }
 
 class ApkInstaller(private val context: Context) : ApkDownloader {
-    override suspend fun download(release: ReleaseInfo): Boolean {
-        val manager = context.getSystemService(DownloadManager::class.java)
+    override suspend fun download(release: ReleaseInfo): Boolean = withContext(Dispatchers.IO) {
+        val manager = context.getSystemService(DownloadManager::class.java) ?: return@withContext false
         apkFile().delete()
         val request = DownloadManager.Request(Uri.parse(release.apkUrl))
             .setTitle("Розклад ${release.version}")
@@ -25,15 +27,27 @@ class ApkInstaller(private val context: Context) : ApkDownloader {
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, FILE_NAME)
         val id = manager.enqueue(request)
-        while (true) {
-            delay(1000)
-            manager.query(DownloadManager.Query().setFilterById(id)).use { cursor ->
-                if (!cursor.moveToFirst()) return false
-                when (cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
-                    DownloadManager.STATUS_SUCCESSFUL -> return true
-                    DownloadManager.STATUS_FAILED -> return false
+        var success = false
+        try {
+            var waited = 0L
+            while (waited < TIMEOUT_MS) {
+                delay(POLL_MS)
+                waited += POLL_MS
+                val status = manager.query(DownloadManager.Query().setFilterById(id)).use { cursor ->
+                    if (!cursor.moveToFirst()) return@withContext false
+                    cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                }
+                when (status) {
+                    DownloadManager.STATUS_SUCCESSFUL -> {
+                        success = true
+                        return@withContext true
+                    }
+                    DownloadManager.STATUS_FAILED -> return@withContext false
                 }
             }
+            false
+        } finally {
+            if (!success) manager.remove(id)
         }
     }
 
@@ -57,6 +71,8 @@ class ApkInstaller(private val context: Context) : ApkDownloader {
     private fun apkFile() = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), FILE_NAME)
 
     private companion object {
+        const val POLL_MS = 1000L
+        const val TIMEOUT_MS = 10 * 60 * 1000L
         const val FILE_NAME = "rozklad-update.apk"
         const val MIME = "application/vnd.android.package-archive"
     }
