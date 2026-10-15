@@ -24,8 +24,8 @@
 
 | Назначение | Запрос |
 |---|---|
-| Автокомплит групп | `GET timetable.cgi?n=701&lev=142&faculty=<id>&course=<n>&query=<cp1251-urlencoded>` → JSON `{"query":..,"suggestions":[..]}` |
-| Автокомплит преподавателей | `GET timetable.cgi?n=701&lev=141&faculty=<id>&query=<cp1251>` → тот же формат |
+| Автокомплит групп | `GET timetable.cgi?n=701&lev=142&faculty=<id>&course=<n>&query=<UTF-8 urlencoded>` → JSON в cp1251 `{"query":..,"suggestions":[..]}` |
+| Автокомплит преподавателей | `GET timetable.cgi?n=701&lev=141&faculty=<id>&query=<UTF-8>` → тот же формат |
 | Расписание по имени | `POST timetable.cgi?n=700`, form: `faculty=0&teacher=<cp1251>&course=0&group=<cp1251>&sdate=dd.mm.yyyy&edate=dd.mm.yyyy&n=700` |
 | Расписание по ID | `GET timetable.cgi?n=700&group=<id>&sdate=..&edate=..` (для преподавателя — `teacher=<id>`, проверено: `teacher=66`) |
 
@@ -38,7 +38,13 @@
 Ячейка содержит (возможно несколько занятий):
 `span.p_name` (предмет), `span.p_type_name` (Л/Пр/…), `span.gr2_name` (поток, опционально),
 `span.t_name` (преподаватель), `span.room_name` (аудитория). Пустая ячейка — нет пары.
-Возможен класс `.remote_work` (дистанционно) — сохранять как флаг.
+На странице преподавателя группы приходят в `span.gr_name` вместо `gr2_name`; `t_name` там нет.
+Пометки перед `p_name` относятся к следующему занятию: `span.zamena` («Увага! Заняття відмінено!»,
+«Увага! Заміна! … замість: …», «Увага! Заняття перенесено у іншу аудиторію …») и
+`span.remote_work1` («дистанційно»); у дистанционных пар бывают ссылки `<a href>` (Google Meet).
+Несколько занятий в одной ячейке идут подряд (например, отменённое и замена).
+Пустой период (или неизвестный ID) — `div.alert` «За вашим запитом записів не знайдено» без заголовка.
+Номера пар 1–7: 08:30–09:50, 10:00–11:20, 12:00–13:20, 13:30–14:50, 15:10–16:30, 16:40–18:00, 18:10–19:30.
 
 ## Стек
 
@@ -64,8 +70,9 @@ work/         SyncWorker, ReminderScheduler, ReminderReceiver, BootReceiver
 
 **Модели**
 - `Subscription(id, type: GROUP|TEACHER, name, siteId, isPrimary)`
-- `Lesson(subscriptionId, date, pairNo, start, end, subject, kind, teacher, room, stream?, remote)`;
-  ключ — (subscriptionId, date, pairNo, индекс занятия в ячейке).
+- `Lesson(date, pairNo, slot, start, end, subject, kind, teacher?, room?, stream?, note?, cancelled, remote, links)`;
+  ключ в кэше — (subscriptionId, date, pairNo, slot), `slot` — индекс занятия в ячейке.
+  `cancelled` = пометка содержит «відмінено»; отменённые пары зачёркнуты в UI и не дают напоминаний.
 
 **Принципы**
 - Room — единственный источник правды для UI, виджета и напоминаний. Сеть пишет только в Room.
@@ -117,9 +124,10 @@ work/         SyncWorker, ReminderScheduler, ReminderReceiver, BootReceiver
 ## Ошибки
 
 - Нет сети / сайт недоступен / таймаут (15 с): показываем кэш, плашка «Офлайн», worker — retry с backoff.
-- Страница без ожидаемой разметки (нет заголовка «Розклад групи/викладача») → `ParseException`,
+- Страница без ожидаемой разметки (нет заголовка «Розклад групи/викладача» и нет «записів не знайдено») → `SiteFormatException`,
   кэш **не трогаем**, сообщение «Не вдалося розібрати відповідь сайту».
-- Ответ с заголовком, но без дней — валидно пустой период.
+- «Записів не знайдено» — валидно пустой период. Если при добавлении подписки ID получить не удалось
+  (пустой период), подписка хранит `siteId = null` и запрашивается POST по имени, пока ID не появится.
 
 ## Тестирование
 
