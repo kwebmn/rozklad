@@ -7,6 +7,7 @@ import org.junit.Test
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import java.util.Locale
 
 class FormatTest {
     private val now = FIXED_CLOCK.millis()
@@ -43,5 +44,17 @@ class FormatTest {
         assertEquals("Оновлено 13.10 09:00", formatSyncStatus(now - 2 * 24 * 60 * minute, now, false, KYIV))
         assertEquals("Офлайн · дані від 15.10 08:55", formatSyncStatus(now - 5 * minute, now, true, KYIV))
         assertEquals("Офлайн · немає даних", formatSyncStatus(null, now, true, KYIV))
+    }
+
+    @Test
+    fun `dates and times use latin digits whatever the default locale`() {
+        val saved = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("ar-EG-u-nu-arab"))
+            assertEquals("16.10", shortDate(LocalDate.of(2026, 10, 16)))
+            assertEquals("08:30", formatTime(LocalTime.of(8, 30)))
+        } finally {
+            Locale.setDefault(saved)
+        }
     }
 }

@@ -5,6 +5,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import java.util.Locale
 
 private val DAY_SHORT = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд")
 private val DAY_FULL = listOf("Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота", "Неділя")
@@ -14,9 +15,9 @@ fun dayShort(day: DayOfWeek): String = DAY_SHORT[day.value - 1]
 
 fun dayFull(day: DayOfWeek): String = DAY_FULL[day.value - 1]
 
-fun shortDate(date: LocalDate): String = "%02d.%02d".format(date.dayOfMonth, date.monthValue)
+fun shortDate(date: LocalDate): String = "%02d.%02d".format(Locale.ROOT, date.dayOfMonth, date.monthValue)
 
-fun formatTime(time: LocalTime): String = "%02d:%02d".format(time.hour, time.minute)
+fun formatTime(time: LocalTime): String = "%02d:%02d".format(Locale.ROOT, time.hour, time.minute)
 
 fun shortRoom(room: String): String {
     val match = ROOM.find(room.trim()) ?: return room.trim()
