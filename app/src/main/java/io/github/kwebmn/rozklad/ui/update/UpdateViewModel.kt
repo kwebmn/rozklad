@@ -31,6 +31,7 @@ class UpdateViewModel(
     val state: StateFlow<UpdateState> = _state.asStateFlow()
 
     fun check(force: Boolean) {
+        if (!force && _state.value != UpdateState.Idle) return
         if (force) _state.value = UpdateState.Checking
         viewModelScope.launch {
             _state.value = try {

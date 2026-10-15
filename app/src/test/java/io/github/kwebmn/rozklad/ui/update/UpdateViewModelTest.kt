@@ -45,6 +45,14 @@ class UpdateViewModelTest {
     }
 
     @Test
+    fun `automatic recheck keeps a non-idle state`() {
+        val vm = vm()
+        vm.check(force = false)
+        vm.check(force = false)
+        assertEquals(UpdateState.Available(newer), vm.state.value)
+    }
+
+    @Test
     fun `failed download is reported`() {
         downloadOk = false
         val vm = vm()

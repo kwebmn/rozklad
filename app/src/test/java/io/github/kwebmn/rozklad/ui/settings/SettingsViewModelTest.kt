@@ -65,4 +65,13 @@ class SettingsViewModelTest {
         assertEquals(true, vm.state.value.subscriptions.single().isPrimary)
         assertEquals(1, changed)
     }
+
+    @Test
+    fun `setPrimary flips primary flag and reschedules`() = runTest {
+        store.insertSubscription(Subscription(type = SubscriptionType.GROUP, name = "A", siteId = "1", isPrimary = true))
+        val b = store.insertSubscription(Subscription(type = SubscriptionType.GROUP, name = "B", siteId = "2"))
+        vm.setPrimary(b)
+        assertEquals(listOf("B"), vm.state.value.subscriptions.filter { it.isPrimary }.map { it.name })
+        assertEquals(1, changed)
+    }
 }
