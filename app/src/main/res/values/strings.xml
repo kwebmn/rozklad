@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Розклад</string>
+    <string name="widget_name">Розклад</string>
+    <string name="widget_description">Пари на сьогодні для основного розкладу</string>
 </resources>
