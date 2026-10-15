@@ -6,9 +6,11 @@ import io.github.kwebmn.rozklad.data.DataStoreSettings
 import io.github.kwebmn.rozklad.data.LessonStore
 import io.github.kwebmn.rozklad.data.ScheduleRepository
 import io.github.kwebmn.rozklad.data.SettingsStore
+import io.github.kwebmn.rozklad.data.UpdateChecker
 import io.github.kwebmn.rozklad.data.local.AppDatabase
 import io.github.kwebmn.rozklad.data.local.RoomLessonStore
 import io.github.kwebmn.rozklad.data.remote.ScheduleApi
+import io.github.kwebmn.rozklad.data.remote.UpdateApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,6 +33,7 @@ class AppContainer(context: Context) {
     val store: LessonStore = RoomLessonStore(database.dao())
     val repository = ScheduleRepository(ScheduleApi(http), store, clock)
     val settings: SettingsStore = DataStoreSettings(context.settingsDataStore)
+    val updateChecker = UpdateChecker(UpdateApi(http), settings, BuildConfig.VERSION_NAME, clock)
 }
 
 val Context.container: AppContainer
