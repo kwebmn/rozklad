@@ -10,6 +10,11 @@ interface LessonStore {
     suspend fun subscriptions(): List<Subscription>
     suspend fun insertSubscription(sub: Subscription): Long
     suspend fun updateSubscription(sub: Subscription)
+    /**
+     * Точечно отмечает синхронизацию, не трогая остальные поля строки:
+     * lastSyncedAt меняется только при syncedAt != null, siteId заполняется только если он ещё null.
+     */
+    suspend fun markSynced(id: Long, syncedAt: Long?, siteId: String?)
     /** Удаляет подписку вместе с её парами. */
     suspend fun deleteSubscription(id: Long)
     fun observeLessons(subscriptionId: Long, range: DateRange): Flow<List<Lesson>>

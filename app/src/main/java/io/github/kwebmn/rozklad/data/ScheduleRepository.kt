@@ -10,6 +10,7 @@ import io.github.kwebmn.rozklad.domain.diffLessons
 import io.github.kwebmn.rozklad.domain.syncWindow
 import kotlinx.coroutines.flow.Flow
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 
 class ScheduleRepository(
@@ -54,16 +55,29 @@ class ScheduleRepository(
         return sub.copy(id = id)
     }
 
-    /** Бросает NetworkException / SiteFormatException; при ошибке кэш не меняется. */
+    /**
+     * Бросает NetworkException / SiteFormatException; при ошибке кэш не меняется.
+     * Только обновление стандартного окна синхронизации сдвигает lastSyncedAt и возвращает изменения;
+     * подгрузка других недель лишь сохраняет пары.
+     */
     suspend fun refresh(sub: Subscription, range: DateRange = syncWindow(today())): List<LessonChange> {
         val current = store.subscriptions().firstOrNull { it.id == sub.id } ?: return emptyList()
         val parsed = source.fetch(current.type, current.siteId, current.name, range)
+        // Подписку могли удалить во время запроса — тогда ничего не пишем, чтобы не оставить сирот.
+        if (store.subscriptions().none { it.id == current.id }) return emptyList()
+        val isWindow = range == syncWindow(today())
         val old = store.lessons(current.id, range)
         store.replaceLessons(current.id, range, parsed.lessons)
-        store.updateSubscription(
-            current.copy(siteId = current.siteId ?: parsed.siteId, lastSyncedAt = clock.millis()),
+        store.markSynced(current.id, syncedAt = if (isWindow) clock.millis() else null, siteId = parsed.siteId)
+        val last = current.lastSyncedAt
+        if (!isWindow || last == null) return emptyList()
+        // Даты за пределами прошлого окна загружены впервые — это не изменения.
+        val coveredTo = syncWindow(Instant.ofEpochMilli(last).atZone(clock.zone).toLocalDate()).to
+        return diffLessons(
+            old.filter { !it.date.isAfter(coveredTo) },
+            parsed.lessons.filter { !it.date.isAfter(coveredTo) },
+            since = today(),
         )
-        return if (current.lastSyncedAt == null) emptyList() else diffLessons(old, parsed.lessons, since = today())
     }
 
     suspend fun deleteSubscription(id: Long) {

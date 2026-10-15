@@ -27,6 +27,12 @@ class FakeLessonStore : LessonStore {
         subs.value = subs.value.map { if (it.id == sub.id) sub else it }
     }
 
+    override suspend fun markSynced(id: Long, syncedAt: Long?, siteId: String?) {
+        subs.value = subs.value.map {
+            if (it.id == id) it.copy(lastSyncedAt = syncedAt ?: it.lastSyncedAt, siteId = it.siteId ?: siteId) else it
+        }
+    }
+
     override suspend fun deleteSubscription(id: Long) {
         subs.value = subs.value.filterNot { it.id == id }
         lessonsBySub.value = lessonsBySub.value - id

@@ -22,6 +22,12 @@ abstract class ScheduleDao {
     @Update
     abstract suspend fun updateSubscription(entity: SubscriptionEntity)
 
+    @Query(
+        "UPDATE subscriptions SET lastSyncedAt = COALESCE(:syncedAt, lastSyncedAt), " +
+            "siteId = COALESCE(siteId, :siteId) WHERE id = :id",
+    )
+    abstract suspend fun markSynced(id: Long, syncedAt: Long?, siteId: String?)
+
     @Query("DELETE FROM subscriptions WHERE id = :id")
     protected abstract suspend fun deleteSubscriptionRow(id: Long)
 

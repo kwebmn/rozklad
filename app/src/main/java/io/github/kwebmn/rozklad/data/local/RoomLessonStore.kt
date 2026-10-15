@@ -18,6 +18,9 @@ class RoomLessonStore(private val dao: ScheduleDao) : LessonStore {
 
     override suspend fun updateSubscription(sub: Subscription) = dao.updateSubscription(sub.toEntity())
 
+    override suspend fun markSynced(id: Long, syncedAt: Long?, siteId: String?) =
+        dao.markSynced(id, syncedAt, siteId)
+
     override suspend fun deleteSubscription(id: Long) = dao.deleteSubscription(id)
 
     override fun observeLessons(subscriptionId: Long, range: DateRange): Flow<List<Lesson>> =

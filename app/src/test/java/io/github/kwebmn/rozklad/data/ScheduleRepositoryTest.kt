@@ -12,6 +12,7 @@ import io.github.kwebmn.rozklad.fakes.FRI
 import io.github.kwebmn.rozklad.fakes.FakeLessonStore
 import io.github.kwebmn.rozklad.fakes.FakeScheduleSource
 import io.github.kwebmn.rozklad.fakes.THU
+import io.github.kwebmn.rozklad.fakes.clockAt
 import io.github.kwebmn.rozklad.fakes.lesson
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -127,5 +128,77 @@ class ScheduleRepositoryTest {
         assertEquals(listOf(false, true), store.subscriptions().map { it.isPrimary })
         assertEquals(second.id, repo.primary()?.id)
         assertEquals(first.id, store.subscriptions().first().id)
+    }
+
+    @Test
+    fun `newly entered trailing week is not reported as changes`() = runTest {
+        val oct23 = LocalDate.of(2026, 10, 23)
+        source.schedule = ParsedSchedule(GROUP, "ІПЗс-24-1", "-607", listOf(lesson(oct23, 1)))
+        val sub = repo.addSubscription(GROUP, "ІПЗс-24-1")
+        val nextWeek = ScheduleRepository(source, store, clockAt("2026-10-22T09:00"))
+        source.schedule = source.schedule.copy(
+            lessons = listOf(lesson(oct23, 1), lesson(LocalDate.of(2026, 10, 27), 2), lesson(LocalDate.of(2026, 10, 30), 3)),
+        )
+        assertTrue(nextWeek.refresh(store.subscriptions().single()).isEmpty())
+        assertEquals(
+            DateRange(LocalDate.of(2026, 10, 19), LocalDate.of(2026, 11, 1)),
+            source.fetchCalls.last().range,
+        )
+        assertEquals(2, store.lessons(sub.id, DateRange(LocalDate.of(2026, 10, 26), LocalDate.of(2026, 11, 1))).size)
+    }
+
+    @Test
+    fun `change inside previously covered range is still reported after the window moves`() = runTest {
+        val oct23 = LocalDate.of(2026, 10, 23)
+        source.schedule = ParsedSchedule(GROUP, "ІПЗс-24-1", "-607", listOf(lesson(oct23, 1)))
+        repo.addSubscription(GROUP, "ІПЗс-24-1")
+        val nextWeek = ScheduleRepository(source, store, clockAt("2026-10-22T09:00"))
+        val moved = lesson(oct23, 1, room = "к.1ауд.503")
+        source.schedule = source.schedule.copy(lessons = listOf(moved, lesson(LocalDate.of(2026, 10, 27), 2)))
+        assertEquals(
+            listOf(LessonChange.Changed(lesson(oct23, 1), moved)),
+            nextWeek.refresh(store.subscriptions().single()),
+        )
+    }
+
+    @Test
+    fun `out-of-window refresh stores lessons but keeps last sync time`() = runTest {
+        val sub = repo.addSubscription(GROUP, "ІПЗс-24-1")
+        val later = ScheduleRepository(source, store, clockAt("2026-10-15T10:00"))
+        val far = DateRange(LocalDate.of(2026, 10, 26), LocalDate.of(2026, 11, 1))
+        val nov2 = lesson(LocalDate.of(2026, 10, 28), 1)
+        source.schedule = source.schedule.copy(lessons = listOf(nov2))
+        assertTrue(later.refresh(store.subscriptions().single(), far).isEmpty())
+        assertEquals(listOf(nov2), store.lessons(sub.id, far))
+        assertEquals(FIXED_CLOCK.millis(), store.subscriptions().single().lastSyncedAt)
+    }
+
+    @Test
+    fun `out-of-window refresh still learns site id`() = runTest {
+        source.schedule = ParsedSchedule(null, null, null, emptyList())
+        repo.addSubscription(GROUP, "ІПЗс-24-1")
+        source.schedule = ParsedSchedule(GROUP, "ІПЗс-24-1", "-607", emptyList())
+        repo.refresh(store.subscriptions().single(), DateRange(LocalDate.of(2026, 10, 26), LocalDate.of(2026, 11, 1)))
+        assertEquals("-607", store.subscriptions().single().siteId)
+    }
+
+    @Test
+    fun `refresh does not overwrite primary flag changed during fetch`() = runTest {
+        val first = repo.addSubscription(GROUP, "ІПЗс-24-1")
+        val second = repo.addSubscription(GROUP, "ІПЗс-24-2")
+        source.onFetch = { repo.setPrimary(second.id) }
+        repo.refresh(first)
+        assertEquals(listOf(false, true), store.subscriptions().map { it.isPrimary })
+    }
+
+    @Test
+    fun `refresh of a subscription deleted during fetch stores nothing`() = runTest {
+        val first = repo.addSubscription(GROUP, "ІПЗс-24-1")
+        repo.addSubscription(GROUP, "ІПЗс-24-2")
+        source.schedule = source.schedule.copy(lessons = listOf(lesson(FRI, 1)))
+        source.onFetch = { repo.deleteSubscription(first.id) }
+        assertTrue(repo.refresh(first).isEmpty())
+        assertTrue(store.lessons(first.id, window).isEmpty())
+        assertEquals(listOf("ІПЗс-24-2"), store.subscriptions().map { it.name })
     }
 }

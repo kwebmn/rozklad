@@ -13,6 +13,8 @@ class FakeScheduleSource : ScheduleSource {
     var schedule = ParsedSchedule(SubscriptionType.GROUP, "ІПЗс-24-1", "-607", emptyList())
     var error: Exception? = null
     val fetchCalls = mutableListOf<FetchCall>()
+    /** Вызывается внутри fetch — имитирует действия пользователя во время сетевого запроса. */
+    var onFetch: (suspend () -> Unit)? = null
 
     override suspend fun suggest(type: SubscriptionType, query: String, faculty: Int, course: Int): List<String> {
         suggestCalls += query
@@ -22,6 +24,7 @@ class FakeScheduleSource : ScheduleSource {
 
     override suspend fun fetch(type: SubscriptionType, siteId: String?, name: String, range: DateRange): ParsedSchedule {
         fetchCalls += FetchCall(siteId, name, range)
+        onFetch?.invoke()
         error?.let { throw it }
         return schedule
     }
