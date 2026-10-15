@@ -12,10 +12,17 @@ import io.github.kwebmn.rozklad.domain.Reminder
 import io.github.kwebmn.rozklad.domain.reminderId
 import io.github.kwebmn.rozklad.domain.upcomingReminders
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.LocalDateTime
 
 object ReminderScheduler {
-    suspend fun reschedule(context: Context) {
+    /** Параллельные пересчёты (UI, воркер, BootReceiver) иначе могут отменить будильники друг друга. */
+    private val mutex = Mutex()
+
+    suspend fun reschedule(context: Context) = mutex.withLock { rescheduleLocked(context) }
+
+    private suspend fun rescheduleLocked(context: Context) {
         val c = context.container
         val alarms = context.getSystemService(AlarmManager::class.java)
         val now = LocalDateTime.now(c.clock)

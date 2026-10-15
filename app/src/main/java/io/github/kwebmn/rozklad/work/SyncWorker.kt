@@ -1,6 +1,7 @@
 package io.github.kwebmn.rozklad.work
 
 import android.content.Context
+import android.util.Log
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -10,6 +11,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import io.github.kwebmn.rozklad.container
+import kotlinx.coroutines.CancellationException
 import java.util.concurrent.TimeUnit
 
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -18,7 +20,14 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val networkFailed = SyncRunner(c.repository, c.settings) { sub, changes ->
             Notifier.showChanges(applicationContext, sub, changes)
         }.run()
-        ScheduleEffects.apply(applicationContext)
+        try {
+            ScheduleEffects.apply(applicationContext)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Синхронизация уже прошла; сбой пересчёта напоминаний/виджета не повод для retry.
+            Log.e("Rozklad", "Schedule effects failed after sync", e)
+        }
         return if (networkFailed && runAttemptCount < MAX_RETRIES) Result.retry() else Result.success()
     }
 

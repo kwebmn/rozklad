@@ -1,6 +1,7 @@
 package io.github.kwebmn.rozklad
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.kwebmn.rozklad.data.DataStoreSettings
 import io.github.kwebmn.rozklad.data.LessonStore
@@ -11,6 +12,7 @@ import io.github.kwebmn.rozklad.data.local.AppDatabase
 import io.github.kwebmn.rozklad.data.local.RoomLessonStore
 import io.github.kwebmn.rozklad.data.remote.ScheduleApi
 import io.github.kwebmn.rozklad.data.remote.UpdateApi
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -22,7 +24,11 @@ private val Context.settingsDataStore by preferencesDataStore(name = "settings")
 
 class AppContainer(context: Context) {
     val clock: Clock = Clock.systemDefaultZone()
-    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    /** Ошибка фоновой задачи (например, ScheduleEffects из BootReceiver) не должна ронять процесс. */
+    val appScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Default +
+            CoroutineExceptionHandler { _, e -> Log.e("Rozklad", "Background task failed", e) },
+    )
 
     internal val http: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
