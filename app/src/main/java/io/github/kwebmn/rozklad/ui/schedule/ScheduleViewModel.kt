@@ -54,6 +54,7 @@ class ScheduleViewModel(
     private val selectedDate = MutableStateFlow(today)
     private val week = MutableStateFlow(weekStart(today))
     private val status = MutableStateFlow(Status())
+    private val loadedWeeks = mutableSetOf<Pair<Long, LocalDate>>()
 
     private val current: StateFlow<Subscription?> =
         combine(repo.subscriptions, selectedSubId) { subs, id ->
@@ -99,19 +100,21 @@ class ScheduleViewModel(
 
     fun selectSubscription(id: Long) {
         selectedSubId.value = id
+        status.value = Status(refreshing = status.value.refreshing)
+        viewModelScope.launch {
+            val sub = current.first { it?.id == id } ?: return@launch
+            val last = sub.lastSyncedAt
+            if (last == null || clock.millis() - last > STALE_MS) refresh() else loadIfOutsideWindow(selectedDate.value)
+        }
     }
 
     fun refresh() {
         val sub = current.value ?: return
-        if (status.value.refreshing) return
-        status.value = status.value.copy(refreshing = true)
-        viewModelScope.launch {
-            status.value = runSync {
-                repo.refresh(sub)
-                val w = week.value
-                if (w !in syncWindow(today)) repo.refresh(sub, DateRange(w, w.plusDays(6)))
-                onSynced()
-            }
+        sync {
+            repo.refresh(sub)
+            val w = week.value
+            if (w !in syncWindow(today)) repo.refresh(sub, DateRange(w, w.plusDays(6)))
+            onSynced()
         }
     }
 
@@ -119,9 +122,25 @@ class ScheduleViewModel(
         val sub = current.value ?: return
         if (date in syncWindow(today)) return
         val start = weekStart(date)
-        viewModelScope.launch {
-            status.value = runSync { repo.refresh(sub, DateRange(start, start.plusDays(6))) }
+        val key = sub.id to start
+        if (!loadedWeeks.add(key)) return
+        val started = sync {
+            try {
+                repo.refresh(sub, DateRange(start, start.plusDays(6)))
+            } catch (e: Exception) {
+                loadedWeeks.remove(key)
+                throw e
+            }
         }
+        if (!started) loadedWeeks.remove(key)
+    }
+
+    /** Единственная точка сетевой работы: пропускается, пока идёт другая; итоговый статус пишется один раз. */
+    private fun sync(block: suspend () -> Unit): Boolean {
+        if (status.value.refreshing) return false
+        status.value = status.value.copy(refreshing = true)
+        viewModelScope.launch { status.value = runSync(block) }
+        return true
     }
 
     private suspend fun runSync(block: suspend () -> Unit): Status = try {

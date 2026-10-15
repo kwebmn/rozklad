@@ -2,6 +2,8 @@ package io.github.kwebmn.rozklad.ui.schedule
 
 import io.github.kwebmn.rozklad.data.ScheduleRepository
 import io.github.kwebmn.rozklad.data.remote.NetworkException
+import io.github.kwebmn.rozklad.data.remote.SiteFormatException
+import io.github.kwebmn.rozklad.ui.PARSE_ERROR
 import io.github.kwebmn.rozklad.domain.DateRange
 import io.github.kwebmn.rozklad.domain.Subscription
 import io.github.kwebmn.rozklad.domain.SubscriptionType
@@ -115,5 +117,34 @@ class ScheduleViewModelTest {
         vm.selectSubscription(teacherId)
         assertEquals("Демчина", vm.state.value.current?.name)
         assertEquals(listOf("Лекція"), vm.state.value.dayLessons.map { it.subject })
+    }
+
+    @Test
+    fun `parse error refresh shows message and keeps lessons`() {
+        source.error = SiteFormatException("bad")
+        val vm = vm()
+        vm.refresh()
+        assertEquals(PARSE_ERROR, vm.state.value.error)
+        assertEquals(2, vm.state.value.dayLessons.size)
+    }
+
+    @Test
+    fun `on-demand loads in one week are deduplicated`() {
+        val vm = vm()
+        vm.showDate(LocalDate.of(2026, 10, 27))
+        vm.shiftDay(1)
+        vm.shiftDay(1)
+        assertEquals(1, source.fetchCalls.size)
+    }
+
+    @Test
+    fun `switching subscription clears previous offline status`() {
+        source.error = NetworkException(IOException("down"))
+        val vm = vm()
+        vm.refresh()
+        assertTrue(vm.state.value.offline)
+        source.error = null
+        vm.selectSubscription(teacherId)
+        assertEquals(false, vm.state.value.offline)
     }
 }

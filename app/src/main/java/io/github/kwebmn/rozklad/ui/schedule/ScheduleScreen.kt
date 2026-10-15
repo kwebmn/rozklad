@@ -274,7 +274,7 @@ private fun LessonSheet(lesson: Lesson, onDismiss: () -> Unit) {
                 if (!value.isNullOrBlank()) Text("$label: $value", style = MaterialTheme.typography.bodyLarge)
             }
             lesson.links.forEach { link ->
-                TextButton(onClick = { uriHandler.openUri(link) }) { Text(link) }
+                TextButton(onClick = { try { uriHandler.openUri(link) } catch (_: IllegalArgumentException) { } }) { Text(link) }
             }
         }
     }
