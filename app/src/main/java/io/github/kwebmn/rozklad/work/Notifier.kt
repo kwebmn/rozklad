@@ -13,10 +13,14 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import io.github.kwebmn.rozklad.MainActivity
 import io.github.kwebmn.rozklad.R
+import io.github.kwebmn.rozklad.domain.LessonChange
+import io.github.kwebmn.rozklad.domain.Subscription
+import io.github.kwebmn.rozklad.domain.changeSummary
 
 object Notifier {
     const val CHANNEL_CHANGES = "changes"
     const val CHANNEL_REMINDERS = "reminders"
+    private const val CHANGES_NOTIFICATION_ID = 1
 
     fun createChannels(context: Context) {
         NotificationManagerCompat.from(context).createNotificationChannelsCompat(
@@ -57,5 +61,22 @@ object Notifier {
             .setAutoCancel(true)
             .build()
         NotificationManagerCompat.from(context).notify(id, notification)
+    }
+
+    @SuppressLint("MissingPermission")
+    fun showChanges(context: Context, subscription: Subscription, changes: List<LessonChange>) {
+        if (!canNotify(context) || changes.isEmpty()) return
+        val lines = changeSummary(changes)
+        val style = NotificationCompat.InboxStyle()
+        lines.forEach(style::addLine)
+        val notification = NotificationCompat.Builder(context, CHANNEL_CHANGES)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Розклад змінився: ${subscription.name}")
+            .setContentText(lines.first())
+            .setStyle(style)
+            .setContentIntent(openAppIntent(context))
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(context).notify(CHANGES_NOTIFICATION_ID, notification)
     }
 }
